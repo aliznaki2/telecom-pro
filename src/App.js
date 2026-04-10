@@ -1,126 +1,76 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import NavbarComponent from './components/Navbar';
-import Sidebar from './components/Sidebar';
+import React, { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
 import Abonnes from './pages/Abonnes';
 import Forfaits from './pages/Forfaits';
 import Factures from './pages/Factures';
 import Support from './pages/Support';
+import Admin from './pages/Admin';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
-import Admin from './pages/Admin';
+import Sidebar from './components/Sidebar';
+import Header from './components/Header';
 
-import { Container, Row, Col } from 'react-bootstrap';
+// Composant qui protège les routes — redirige vers /login si pas connecté
+const ProtectedRoute = ({ children }) => {
+  const user = localStorage.getItem('user');
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+  return children;
+};
 
-// PrivateRoute pour protéger les pages
-const PrivateRoute = ({ children }) => {
-  const user = localStorage.getItem("user");
-  return user ? children : <Navigate to="/login" />;
+const AppLayout = () => {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const location = useLocation();
+  const isAuthPage = ['/login', '/signup'].includes(location.pathname);
+
+  // Pages Login / Signup — aucune protection
+  if (isAuthPage) {
+    return (
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+      </Routes>
+    );
+  }
+
+  // Toutes les autres pages — protégées
+  return (
+    <ProtectedRoute>
+      <div className="app-layout">
+        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <div className="main-wrapper">
+          <Header onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
+          <main className="main-content">
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/abonnes" element={<Abonnes />} />
+              <Route path="/forfaits" element={<Forfaits />} />
+              <Route path="/factures" element={<Factures />} />
+              <Route path="/support" element={<Support />} />
+              <Route path="/admin" element={<Admin />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </main>
+        </div>
+
+        <button
+          className="mobile-toggle"
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          style={{ position: 'fixed', top: 18, left: 18, zIndex: 1001 }}
+        >
+          <i className="fas fa-bars"></i>
+        </button>
+      </div>
+    </ProtectedRoute>
+  );
 };
 
 function App() {
   return (
     <Router>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route path="/admin" element={<Admin />} />
-        <Route path="/" element={<PrivateRoute>
-
-          <div>
-            <Route path="/admin" element={
-  <PrivateRoute>
-    <div>
-      <NavbarComponent />
-      <Container fluid>
-        <Row>
-          <Col md={2} className="p-0 d-none d-md-block">
-            <Sidebar />
-          </Col>
-          <Col md={10} className="p-4">
-            <Admin />
-          </Col>
-        </Row>
-      </Container>
-    </div>
-  </PrivateRoute>
-}/>
-
-            <NavbarComponent />
-            <Container fluid>
-              <Row>
-                <Col md={2} className="p-0 d-none d-md-block">
-                  <Sidebar />
-                </Col>
-                <Col md={10} className="p-4">
-                  <Dashboard />
-                </Col>
-              </Row>
-            </Container>
-          </div>
-        </PrivateRoute>} />
-        <Route path="/abonnes" element={<PrivateRoute>
-          <div>
-            <NavbarComponent />
-            <Container fluid>
-              <Row>
-                <Col md={2} className="p-0 d-none d-md-block">
-                  <Sidebar />
-                </Col>
-                <Col md={10} className="p-4">
-                  <Abonnes />
-                </Col>
-              </Row>
-            </Container>
-          </div>
-        </PrivateRoute>} />
-        <Route path="/forfaits" element={<PrivateRoute>
-          <div>
-            <NavbarComponent />
-            <Container fluid>
-              <Row>
-                <Col md={2} className="p-0 d-none d-md-block">
-                  <Sidebar />
-                </Col>
-                <Col md={10} className="p-4">
-                  <Forfaits />
-                </Col>
-              </Row>
-            </Container>
-          </div>
-        </PrivateRoute>} />
-        <Route path="/factures" element={<PrivateRoute>
-          <div>
-            <NavbarComponent />
-            <Container fluid>
-              <Row>
-                <Col md={2} className="p-0 d-none d-md-block">
-                  <Sidebar />
-                </Col>
-                <Col md={10} className="p-4">
-                  <Factures />
-                </Col>
-              </Row>
-            </Container>
-          </div>
-        </PrivateRoute>} />
-        <Route path="/support" element={<PrivateRoute>
-          <div>
-            <NavbarComponent />
-            <Container fluid>
-              <Row>
-                <Col md={2} className="p-0 d-none d-md-block">
-                  <Sidebar />
-                </Col>
-                <Col md={10} className="p-4">
-                  <Support />
-                </Col>
-              </Row>
-            </Container>
-          </div>
-        </PrivateRoute>} />
-      </Routes>
+      <AppLayout />
     </Router>
   );
 }

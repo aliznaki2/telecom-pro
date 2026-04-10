@@ -1,238 +1,217 @@
 import React, { useState } from 'react';
-import { Tab, Tabs, Row, Col, Card, Button, Modal, Form, Table, Image } from 'react-bootstrap';
-import UserCard from '../components/UserCard';
-import user1 from '../assets/users/user1.jpg';
-import user2 from '../assets/users/user2.jpg';
-import internet from '../assets/forfaits/internet.png';
-import mobile from '../assets/forfaits/telephone.jpg';
+import { abonnesData, forfaitsData, facturesData, ticketsData, getInitials, formatCurrency } from '../data/data';
+import StatusBadge from '../components/StatusBadge';
+import CustomModal from '../components/CustomModal';
 
 const Admin = () => {
-  // === Données initiales ===
-  const [abonnes, setAbonnes] = useState([
-    { id: 1, name: 'Ali Znaki', email: 'ali@example.com', phone: '0600000000', photo: user1 },
-    { id: 2, name: 'Sara Ben', email: 'sara@example.com', phone: '0611111111', photo: user2 },
-  ]);
+  const [activeTab, setActiveTab] = useState('abonnes');
+  const [abonnes, setAbonnes] = useState(abonnesData);
+  const [forfaits, setForfaits] = useState(forfaitsData);
+  const [factures, setFactures] = useState(facturesData);
+  const [tickets, setTickets] = useState(ticketsData);
+  const [search, setSearch] = useState('');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState({ id: null, type: '' });
 
-  const [forfaits, setForfaits] = useState([
-    { id: 1, name: 'Internet 100Go', price: '20$', img: internet },
-    { id: 2, name: 'Mobile 50Min', price: '10$', img: mobile },
-  ]);
+  const tabs = [
+    { key: 'abonnes', label: 'Abonnés', icon: 'fas fa-users', count: abonnes.length },
+    { key: 'forfaits', label: 'Forfaits', icon: 'fas fa-sim-card', count: forfaits.length },
+    { key: 'factures', label: 'Factures', icon: 'fas fa-file-invoice', count: factures.length },
+    { key: 'tickets', label: 'Support', icon: 'fas fa-headset', count: tickets.length },
+  ];
 
-  const [factures, setFactures] = useState([
-    { id: 1, abonne: 'Ali Znaki', forfait: 'Internet 100Go', montant: '20$', status: 'Payé' },
-    { id: 2, abonne: 'Sara Ben', forfait: 'Mobile 50Min', montant: '10$', status: 'Impayé' },
-  ]);
-
-  const [tickets, setTickets] = useState([
-    { id: 1, abonne: 'Ali Znaki', sujet: 'Problème Internet', priorité: 'Haute', status: 'Ouvert' },
-    { id: 2, abonne: 'Sara Ben', sujet: 'Facture incorrecte', priorité: 'Moyenne', status: 'En cours' },
-  ]);
-
-  // === Modals pour Edition ===
-  const [showEdit, setShowEdit] = useState(false);
-  const [editItem, setEditItem] = useState({});
-  const [editType, setEditType] = useState(''); // "abonnes", "forfaits", "factures", "tickets"
-
-  const handleEdit = (item, type) => {
-    setEditItem(item);
-    setEditType(type);
-    setShowEdit(true);
+  const confirmDelete = (id, type) => {
+    setDeleteTarget({ id, type });
+    setShowDeleteModal(true);
   };
 
-  const saveEdit = () => {
-    switch(editType){
-      case 'abonnes':
-        setAbonnes(abonnes.map(a => a.id === editItem.id ? editItem : a));
-        break;
-      case 'forfaits':
-        setForfaits(forfaits.map(f => f.id === editItem.id ? editItem : f));
-        break;
-      case 'factures':
-        setFactures(factures.map(f => f.id === editItem.id ? editItem : f));
-        break;
-      case 'tickets':
-        setTickets(tickets.map(t => t.id === editItem.id ? editItem : t));
-        break;
-      default:
-        break;
-    }
-    setShowEdit(false);
-  };
-
-  const handleDelete = (id, type) => {
-    switch(type){
+  const doDelete = () => {
+    const { id, type } = deleteTarget;
+    switch (type) {
       case 'abonnes': setAbonnes(abonnes.filter(a => a.id !== id)); break;
       case 'forfaits': setForfaits(forfaits.filter(f => f.id !== id)); break;
       case 'factures': setFactures(factures.filter(f => f.id !== id)); break;
       case 'tickets': setTickets(tickets.filter(t => t.id !== id)); break;
       default: break;
     }
+    setShowDeleteModal(false);
+  };
+
+  const filterBySearch = (items, fields) => {
+    if (!search) return items;
+    return items.filter(item =>
+      fields.some(f => item[f]?.toString().toLowerCase().includes(search.toLowerCase()))
+    );
   };
 
   return (
-    <div>
-      <h2 className="mb-4">Admin Dashboard</h2>
-      <Tabs defaultActiveKey="abonnes" id="admin-tabs" className="mb-3">
-        {/* ===== Abonnés ===== */}
-        <Tab eventKey="abonnes" title="Abonnés">
-          <Row>
-            {abonnes.map(user => (
-              <Col md={4} key={user.id}>
-                <UserCard user={user} onEdit={(u)=>handleEdit(u,'abonnes')} onDelete={(id)=>handleDelete(id,'abonnes')} />
-              </Col>
-            ))}
-          </Row>
-        </Tab>
+    <div className="animate-fade-in">
+      <div className="page-header">
+        <h1 className="page-title">Administration</h1>
+        <p className="page-description">Gestion complète de toutes les données</p>
+      </div>
 
-        {/* ===== Forfaits ===== */}
-        <Tab eventKey="forfaits" title="Forfaits">
-          <Row>
-            {forfaits.map(f => (
-              <Col md={4} key={f.id}>
-                <Card className="mb-3 shadow-sm">
-                  <Image src={f.img} width="100%" height={150} />
-                  <Card.Body>
-                    <Card.Title>{f.name}</Card.Title>
-                    <Card.Text>{f.price}</Card.Text>
-                    <Button variant="warning" size="sm" className="me-2" onClick={()=>handleEdit(f,'forfaits')}>Modifier</Button>
-                    <Button variant="danger" size="sm" onClick={()=>handleDelete(f.id,'forfaits')}>Supprimer</Button>
-                  </Card.Body>
-                </Card>
-              </Col>
-            ))}
-          </Row>
-        </Tab>
+      {/* Stats */}
+      <div className="admin-stats-row">
+        <div className="admin-stat">
+          <div className="admin-stat-value" style={{ color: 'var(--accent-cyan)' }}>{abonnes.length}</div>
+          <div className="admin-stat-label">Abonnés</div>
+        </div>
+        <div className="admin-stat">
+          <div className="admin-stat-value" style={{ color: 'var(--accent-violet)' }}>{forfaits.length}</div>
+          <div className="admin-stat-label">Forfaits</div>
+        </div>
+        <div className="admin-stat">
+          <div className="admin-stat-value" style={{ color: 'var(--accent-emerald)' }}>{factures.length}</div>
+          <div className="admin-stat-label">Factures</div>
+        </div>
+        <div className="admin-stat">
+          <div className="admin-stat-value" style={{ color: 'var(--accent-amber)' }}>{tickets.length}</div>
+          <div className="admin-stat-label">Tickets</div>
+        </div>
+      </div>
 
-        {/* ===== Factures ===== */}
-        <Tab eventKey="factures" title="Factures">
-          <Table striped bordered hover responsive>
-            <thead>
-              <tr>
-                <th>Abonné</th><th>Forfait</th><th>Montant</th><th>Status</th><th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {factures.map(f => (
-                <tr key={f.id}>
-                  <td>{f.abonne}</td>
-                  <td>{f.forfait}</td>
-                  <td>{f.montant}</td>
-                  <td>{f.status}</td>
-                  <td>
-                    <Button variant="warning" size="sm" className="me-2" onClick={()=>handleEdit(f,'factures')}>Modifier</Button>
-                    <Button variant="danger" size="sm" onClick={()=>handleDelete(f.id,'factures')}>Supprimer</Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        </Tab>
+      {/* Search */}
+      <div className="toolbar" style={{ marginBottom: 8 }}>
+        <div className="search-box">
+          <i className="fas fa-search"></i>
+          <input type="text" placeholder="Rechercher dans toutes les données..." value={search} onChange={e => setSearch(e.target.value)} />
+        </div>
+      </div>
 
-        {/* ===== Support ===== */}
-        <Tab eventKey="tickets" title="Support">
-          <Table striped bordered hover responsive>
-            <thead>
-              <tr>
-                <th>Abonné</th><th>Sujet</th><th>Priorité</th><th>Status</th><th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tickets.map(t => (
-                <tr key={t.id}>
-                  <td>{t.abonne}</td>
-                  <td>{t.sujet}</td>
-                  <td>{t.priorité}</td>
-                  <td>{t.status}</td>
-                  <td>
-                    <Button variant="warning" size="sm" className="me-2" onClick={()=>handleEdit(t,'tickets')}>Modifier</Button>
-                    <Button variant="danger" size="sm" onClick={()=>handleDelete(t.id,'tickets')}>Supprimer</Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        </Tab>
-      </Tabs>
+      {/* Tabs */}
+      <div className="custom-tabs">
+        {tabs.map(t => (
+          <button
+            key={t.key}
+            className={`custom-tab ${activeTab === t.key ? 'active' : ''}`}
+            onClick={() => setActiveTab(t.key)}
+          >
+            <i className={t.icon} style={{ marginRight: 6 }}></i>
+            {t.label}
+            <span className="tab-count">{t.count}</span>
+          </button>
+        ))}
+      </div>
 
-      {/* Modal Edition */}
-      <Modal show={showEdit} onHide={()=>setShowEdit(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>Modifier {editType}</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form>
-            {editType === 'abonnes' && (
-              <>
-                <Form.Group className="mb-2"><Form.Label>Nom</Form.Label>
-                  <Form.Control type="text" value={editItem.name || ''} onChange={e=>setEditItem({...editItem,name:e.target.value})}/>
-                </Form.Group>
-                <Form.Group className="mb-2"><Form.Label>Email</Form.Label>
-                  <Form.Control type="email" value={editItem.email || ''} onChange={e=>setEditItem({...editItem,email:e.target.value})}/>
-                </Form.Group>
-                <Form.Group className="mb-2"><Form.Label>Téléphone</Form.Label>
-                  <Form.Control type="text" value={editItem.phone || ''} onChange={e=>setEditItem({...editItem,phone:e.target.value})}/>
-                </Form.Group>
-              </>
-            )}
-            {editType === 'forfaits' && (
-              <>
-                <Form.Group className="mb-2"><Form.Label>Nom</Form.Label>
-                  <Form.Control type="text" value={editItem.name || ''} onChange={e=>setEditItem({...editItem,name:e.target.value})}/>
-                </Form.Group>
-                <Form.Group className="mb-2"><Form.Label>Prix</Form.Label>
-                  <Form.Control type="text" value={editItem.price || ''} onChange={e=>setEditItem({...editItem,price:e.target.value})}/>
-                </Form.Group>
-                <Form.Group className="mb-2"><Form.Label>Image URL</Form.Label>
-                  <Form.Control type="text" value={editItem.img || ''} onChange={e=>setEditItem({...editItem,img:e.target.value})}/>
-                </Form.Group>
-              </>
-            )}
-            {editType === 'factures' && (
-              <>
-                <Form.Group className="mb-2"><Form.Label>Abonné</Form.Label>
-                  <Form.Control type="text" value={editItem.abonne || ''} onChange={e=>setEditItem({...editItem,abonne:e.target.value})}/>
-                </Form.Group>
-                <Form.Group className="mb-2"><Form.Label>Forfait</Form.Label>
-                  <Form.Control type="text" value={editItem.forfait || ''} onChange={e=>setEditItem({...editItem,forfait:e.target.value})}/>
-                </Form.Group>
-                <Form.Group className="mb-2"><Form.Label>Montant</Form.Label>
-                  <Form.Control type="text" value={editItem.montant || ''} onChange={e=>setEditItem({...editItem,montant:e.target.value})}/>
-                </Form.Group>
-                <Form.Group className="mb-2"><Form.Label>Status</Form.Label>
-                  <Form.Select value={editItem.status || ''} onChange={e=>setEditItem({...editItem,status:e.target.value})}>
-                    <option>Payé</option>
-                    <option>Impayé</option>
-                  </Form.Select>
-                </Form.Group>
-              </>
-            )}
-            {editType === 'tickets' && (
-              <>
-                <Form.Group className="mb-2"><Form.Label>Abonné</Form.Label>
-                  <Form.Control type="text" value={editItem.abonne || ''} onChange={e=>setEditItem({...editItem,abonne:e.target.value})}/>
-                </Form.Group>
-                <Form.Group className="mb-2"><Form.Label>Sujet</Form.Label>
-                  <Form.Control type="text" value={editItem.sujet || ''} onChange={e=>setEditItem({...editItem,sujet:e.target.value})}/>
-                </Form.Group>
-                <Form.Group className="mb-2"><Form.Label>Priorité</Form.Label>
-                  <Form.Select value={editItem.priorité || ''} onChange={e=>setEditItem({...editItem,priorité:e.target.value})}>
-                    <option>Haute</option><option>Moyenne</option><option>Basse</option>
-                  </Form.Select>
-                </Form.Group>
-                <Form.Group className="mb-2"><Form.Label>Status</Form.Label>
-                  <Form.Select value={editItem.status || ''} onChange={e=>setEditItem({...editItem,status:e.target.value})}>
-                    <option>Ouvert</option><option>En cours</option><option>Résolu</option>
-                  </Form.Select>
-                </Form.Group>
-              </>
-            )}
-          </Form>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={()=>setShowEdit(false)}>Annuler</Button>
-          <Button variant="primary" onClick={saveEdit}>Sauvegarder</Button>
-        </Modal.Footer>
-      </Modal>
+      <div className="panel">
+        {/* Abonnés Tab */}
+        {activeTab === 'abonnes' && (
+          <div className="data-table-wrapper">
+            <table className="data-table">
+              <thead><tr><th>Abonné</th><th>Téléphone</th><th>Forfait</th><th>Statut</th><th>Actions</th></tr></thead>
+              <tbody>
+                {filterBySearch(abonnes, ['name', 'email', 'phone']).map(a => (
+                  <tr key={a.id}>
+                    <td>
+                      <div className="user-cell">
+                        <div className="user-cell-avatar">{getInitials(a.name)}</div>
+                        <div className="user-cell-info">
+                          <span className="user-cell-name">{a.name}</span>
+                          <span className="user-cell-email">{a.email}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td>{a.phone}</td>
+                    <td>{a.forfait}</td>
+                    <td><StatusBadge status={a.status} /></td>
+                    <td>
+                      <button className="btn-icon delete" onClick={() => confirmDelete(a.id, 'abonnes')} title="Supprimer"><i className="fas fa-trash-can"></i></button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Forfaits Tab */}
+        {activeTab === 'forfaits' && (
+          <div className="data-table-wrapper">
+            <table className="data-table">
+              <thead><tr><th>Forfait</th><th>Catégorie</th><th>Prix</th><th>Abonnés</th><th>Actions</th></tr></thead>
+              <tbody>
+                {filterBySearch(forfaits, ['name', 'category']).map(f => (
+                  <tr key={f.id}>
+                    <td style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
+                      <i className={f.icon} style={{ marginRight: 10, color: 'var(--accent-cyan)' }}></i>{f.name}
+                    </td>
+                    <td><span className={`forfait-category ${f.category}`}>{f.category}</span></td>
+                    <td style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{formatCurrency(f.price)}/mois</td>
+                    <td>{f.abonnes}</td>
+                    <td>
+                      <button className="btn-icon delete" onClick={() => confirmDelete(f.id, 'forfaits')} title="Supprimer"><i className="fas fa-trash-can"></i></button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Factures Tab */}
+        {activeTab === 'factures' && (
+          <div className="data-table-wrapper">
+            <table className="data-table">
+              <thead><tr><th>ID</th><th>Abonné</th><th>Forfait</th><th>Montant</th><th>Statut</th><th>Date</th><th>Actions</th></tr></thead>
+              <tbody>
+                {filterBySearch(factures, ['abonne', 'forfait']).map(f => (
+                  <tr key={f.id}>
+                    <td style={{ color: 'var(--text-muted)' }}>#{String(f.id).padStart(4, '0')}</td>
+                    <td style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{f.abonne}</td>
+                    <td>{f.forfait}</td>
+                    <td style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{formatCurrency(f.montant)}</td>
+                    <td><StatusBadge status={f.status} /></td>
+                    <td>{f.date}</td>
+                    <td>
+                      <button className="btn-icon delete" onClick={() => confirmDelete(f.id, 'factures')} title="Supprimer"><i className="fas fa-trash-can"></i></button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Tickets Tab */}
+        {activeTab === 'tickets' && (
+          <div className="data-table-wrapper">
+            <table className="data-table">
+              <thead><tr><th>ID</th><th>Abonné</th><th>Sujet</th><th>Priorité</th><th>Statut</th><th>Date</th><th>Actions</th></tr></thead>
+              <tbody>
+                {filterBySearch(tickets, ['abonne', 'sujet']).map(t => (
+                  <tr key={t.id}>
+                    <td style={{ color: 'var(--text-muted)' }}>#{String(t.id).padStart(4, '0')}</td>
+                    <td style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{t.abonne}</td>
+                    <td>{t.sujet}</td>
+                    <td><StatusBadge status={t.priorite} /></td>
+                    <td><StatusBadge status={t.status} /></td>
+                    <td>{t.date}</td>
+                    <td>
+                      <button className="btn-icon delete" onClick={() => confirmDelete(t.id, 'tickets')} title="Supprimer"><i className="fas fa-trash-can"></i></button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <CustomModal show={showDeleteModal} onClose={() => setShowDeleteModal(false)} title="Confirmer la suppression"
+        footer={
+          <>
+            <button className="btn-ghost" onClick={() => setShowDeleteModal(false)}>Annuler</button>
+            <button className="btn-primary-gradient" style={{ background: 'var(--gradient-danger)' }} onClick={doDelete}>Supprimer</button>
+          </>
+        }
+      >
+        <div className="confirm-dialog">
+          <i className="fas fa-triangle-exclamation"></i>
+          <h3>Êtes-vous sûr ?</h3>
+          <p>Cet élément sera définitivement supprimé.</p>
+        </div>
+      </CustomModal>
     </div>
   );
 };
